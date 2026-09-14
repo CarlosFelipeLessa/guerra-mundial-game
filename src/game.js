@@ -165,6 +165,9 @@ export class Game {
     } else if (stateKey === 'shoot') {
       this.player.triggerShoot('shoot');
     } else if (stateKey === 'shootDown') {
+      this.input.autoWalk = false;
+      this.input.autoRun = false;
+      this.player.vx = 0;
       this.player.triggerShoot('shootDown');
     } else if (stateKey === 'shootRun') {
       this.input.autoWalk = true;
