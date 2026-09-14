@@ -103,20 +103,28 @@ export class Game {
   bindInputs() {
     window.addEventListener('keydown', (e) => {
       this.input.keys[e.code] = true;
-      // Any physical key press cancels automated test walk
       this.input.autoWalk = false;
       this.input.autoRun = false;
 
-      // Number keys 1-5
+      // Number keys 1-7
       if (e.code === 'Digit1') this.triggerStateAction('idle');
       if (e.code === 'Digit2') this.triggerStateAction('walk');
       if (e.code === 'Digit3') this.triggerStateAction('run');
       if (e.code === 'Digit4') this.triggerStateAction('jump');
       if (e.code === 'Digit5') this.triggerStateAction('shoot');
+      if (e.code === 'Digit6') this.triggerStateAction('shootDown');
+      if (e.code === 'Digit7') this.triggerStateAction('shootRun');
 
       // Shoot keys
       if (e.code === 'KeyF' || e.code === 'KeyX') {
-        this.player.triggerShoot();
+        const keyDown = this.input.keys['ArrowDown'] || this.input.keys['KeyS'] || this.input.keys['s'] || this.input.keys['S'];
+        if (keyDown) {
+          this.player.triggerShoot('down');
+        } else if (Math.abs(this.player.vx) > 10) {
+          this.player.triggerShoot('run');
+        } else {
+          this.player.triggerShoot();
+        }
       }
     });
 
@@ -124,7 +132,6 @@ export class Game {
       this.input.keys[e.code] = false;
     });
 
-    // Clear keys if window loses focus to avoid stuck movements
     window.addEventListener('blur', () => {
       this.input.keys = {};
       this.input.autoWalk = false;
@@ -134,7 +141,14 @@ export class Game {
     const viewport = document.getElementById('viewport-container');
     if (viewport) {
       viewport.addEventListener('mousedown', () => {
-        this.player.triggerShoot();
+        const keyDown = this.input.keys['ArrowDown'] || this.input.keys['KeyS'] || this.input.keys['s'] || this.input.keys['S'];
+        if (keyDown) {
+          this.player.triggerShoot('down');
+        } else if (Math.abs(this.player.vx) > 10) {
+          this.player.triggerShoot('run');
+        } else {
+          this.player.triggerShoot();
+        }
       });
     }
   }
@@ -158,6 +172,11 @@ export class Game {
       }
     } else if (stateKey === 'shoot') {
       this.player.triggerShoot();
+    } else if (stateKey === 'shootDown') {
+      this.player.triggerShoot('down');
+    } else if (stateKey === 'shootRun') {
+      this.input.autoWalk = true;
+      this.player.triggerShoot('run');
     }
 
     this.updateStateButtons(stateKey);
@@ -207,9 +226,6 @@ export class Game {
     }
   }
 
-  /**
-   * Renders dynamic parallax background with synchronized scrolling ground grid
-   */
   renderEnvironment() {
     const groundY = this.player.groundY;
 
@@ -220,7 +236,7 @@ export class Game {
     this.ctx.fillStyle = skyGrad;
     this.ctx.fillRect(0, 0, this.width, groundY);
 
-    // 2. Parallax Distant Cyber Skyline (moves slowly at 0.15x camera speed)
+    // 2. Parallax Distant Cyber Skyline
     this.ctx.save();
     this.ctx.fillStyle = 'rgba(14, 25, 45, 0.45)';
     const skylineStep = 80;
@@ -258,12 +274,11 @@ export class Game {
     this.ctx.stroke();
     this.ctx.restore();
 
-    // 6. SCROLLED PERSPECTIVE FLOOR GRID (moves 1:1 with cameraX for physical ground grip)
+    // 6. Scrolled Perspective Floor Grid
     this.ctx.save();
     this.ctx.strokeStyle = 'rgba(0, 240, 255, 0.22)';
     this.ctx.lineWidth = 1;
 
-    // Horizontal Depth Lines
     const gridRows = 7;
     for (let i = 1; i <= gridRows; i++) {
       const lineY = groundY + Math.pow(i / gridRows, 1.7) * (this.height - groundY);
@@ -273,9 +288,8 @@ export class Game {
       this.ctx.stroke();
     }
 
-    // Perspective Vertical Floor Lines (synchronized to camera scroll)
     const vX = this.width / 2;
-    const vY = groundY - 140; // Vanishing point
+    const vY = groundY - 140;
     const cellWidth = 70;
     const scrollOffset = -(this.cameraX % cellWidth);
 
@@ -287,7 +301,7 @@ export class Game {
     }
     this.ctx.restore();
 
-    // 7. Render Footstep Dust Particles
+    // 7. Footstep Dust Particles
     for (const p of this.dustParticles) {
       const screenX = p.x - this.cameraX;
       this.ctx.fillStyle = `${p.color}${p.alpha})`;
@@ -304,7 +318,6 @@ export class Game {
     dt = Math.min(dt, 0.1);
     this.lastTime = timestamp;
 
-    // FPS Counter
     this.frameCount++;
     this.fpsTimer += dt;
     if (this.fpsTimer >= 0.5) {
@@ -313,38 +326,37 @@ export class Game {
       this.fpsTimer = 0;
     }
 
-    // 1. Update Player & Collect Footstep Particles
+    // 1. Update Player
     const newDust = this.player.update(this.input, dt);
     if (newDust.length > 0) {
       this.dustParticles.push(...newDust);
     }
 
-    // 2. Smooth Camera Follow (Keeps player comfortably framed)
+    // 2. Smooth Camera Follow
     const targetCameraX = this.player.x - this.width * 0.4;
     this.cameraX += (targetCameraX - this.cameraX) * Math.min(1, 8 * dt);
 
-    // 3. Update Ambient Effects
+    // 3. Update Particles
     this.updateAmbientParticles(dt);
     this.updateDustParticles(dt);
 
     // 4. Calculate Player Screen Coordinate
     const screenPlayerX = this.player.x - this.cameraX;
 
-    // 5. Canvas Render
+    // 5. Render
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.renderEnvironment();
     this.player.renderCanvas(this.ctx, screenPlayerX, this.showHitbox);
 
-    // 6. DOM Animated Sprite Synchronization
+    // 6. DOM Synchronization
     this.player.syncDOM(this.playerContainer, this.playerSprite, this.playerFallback, screenPlayerX);
 
-    // 7. Update Terminal HUD
+    // 7. Update HUD
     if (this.fpsEl) this.fpsEl.textContent = this.currentFps;
     if (this.dtEl) this.dtEl.textContent = `${(dt * 1000).toFixed(1)}ms`;
     if (this.stateEl) this.stateEl.textContent = this.player.currentState.toUpperCase();
     if (this.posEl) this.posEl.textContent = `X: ${Math.round(this.player.x)} | SPD: ${Math.round(Math.abs(this.player.vx))}`;
 
-    // Sync UI Button Highlights with Active Animation
     if (!this.input.autoWalk) {
       this.updateStateButtons(this.player.currentState);
     }
@@ -353,7 +365,6 @@ export class Game {
   }
 }
 
-// Auto-boot
 window.addEventListener('DOMContentLoaded', () => {
   new Game();
 });

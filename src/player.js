@@ -8,7 +8,9 @@ export const PLAYER_SPRITES = {
   walk: './gif/andando.gif',
   run: './gif/correndo.gif',
   jump: './gif/pulo.gif',
-  shoot: './gif/atirando.gif'
+  shoot: './gif/atirando.gif',
+  shootDown: './gif/atirando para baixo.gif',
+  shootRun: './gif/atirando correndo.gif'
 };
 
 export class Player {
@@ -29,7 +31,6 @@ export class Player {
     this.vy = 0;
     
     // Calibrated Speeds for 1:1 Stride-to-Ground Synchronization
-    // Stride duration in andando.gif is ~1.44s per cycle. 120px/s matches foot displacement perfectly.
     this.speedWalk = 130;
     this.speedRun = 250;
     this.acceleration = 1200; // Snappy ramp-up
@@ -50,13 +51,11 @@ export class Player {
     this.hitboxWidth = 65;
     this.hitboxHeight = 110;
 
-    // States: 'idle' | 'walk' | 'run' | 'jump' | 'shoot'
+    // States: 'idle' | 'walk' | 'run' | 'jump' | 'shoot' | 'shootDown' | 'shootRun'
     this.currentState = 'idle';
     this.shootTimer = 0;
     this.isShooting = false;
-
-    // Virtual Patrol/Auto-Walk Mode (for HUD test deck)
-    this.autoMove = 0; // -1, 0, or 1
+    this.shootType = null; // 'down' | 'run' | null
 
     // Asset Cache
     this.images = {};
@@ -82,10 +81,14 @@ export class Player {
     }
   }
 
-  triggerShoot() {
+  /**
+   * Triggers shooting with an optional forced direction
+   * @param {'down' | 'run' | null} forcedType
+   */
+  triggerShoot(forcedType = null) {
     this.isShooting = true;
     this.shootTimer = 0.45;
-    this.setState('shoot');
+    this.shootType = forcedType;
   }
 
   /**
@@ -101,6 +104,7 @@ export class Player {
     let moveDir = 0;
     const keyLeft = input.keys['ArrowLeft'] || input.keys['KeyA'] || input.keys['a'] || input.keys['A'];
     const keyRight = input.keys['ArrowRight'] || input.keys['KeyD'] || input.keys['d'] || input.keys['D'];
+    const keyDown = input.keys['ArrowDown'] || input.keys['KeyS'] || input.keys['s'] || input.keys['S'];
     const keyRun = input.keys['ShiftLeft'] || input.keys['ShiftRight'] || input.autoRun;
 
     if (keyLeft) moveDir -= 1;
@@ -116,7 +120,6 @@ export class Player {
     const targetVx = moveDir * targetSpeed;
 
     if (moveDir !== 0) {
-      // Accelerate towards target speed
       if (this.vx < targetVx) {
         this.vx = Math.min(this.vx + this.acceleration * dt, targetVx);
       } else if (this.vx > targetVx) {
@@ -124,7 +127,6 @@ export class Player {
       }
       this.facing = moveDir;
     } else {
-      // Decelerate with strong friction to immediately stop
       if (this.vx > 0) {
         this.vx = Math.max(0, this.vx - this.friction * dt);
       } else if (this.vx < 0) {
@@ -153,11 +155,12 @@ export class Player {
       }
     }
 
-    // 4. Shooting Duration
+    // 4. Shooting Timer
     if (this.isShooting) {
       this.shootTimer -= dt;
       if (this.shootTimer <= 0) {
         this.isShooting = false;
+        this.shootType = null;
       }
     }
 
@@ -165,7 +168,13 @@ export class Player {
     const isMoving = Math.abs(this.vx) > 10;
 
     if (this.isShooting) {
-      this.setState('shoot');
+      if (this.shootType === 'down' || (this.shootType === null && keyDown)) {
+        this.setState('shootDown');
+      } else if (this.shootType === 'run' || (this.shootType === null && isMoving)) {
+        this.setState('shootRun');
+      } else {
+        this.setState('shoot');
+      }
     } else if (!this.isGrounded) {
       this.setState('jump');
     } else if (isMoving) {
@@ -184,7 +193,7 @@ export class Player {
         });
       }
     } else {
-      // INSTANT IDLE SNAP: as soon as movement stops, switch to parado.gif!
+      // INSTANT IDLE SNAP
       this.setState('idle');
     }
 
@@ -241,7 +250,7 @@ export class Player {
   renderCanvas(ctx, screenX, showDebug = false) {
     ctx.save();
 
-    // 1. Dynamic Contact Shadow (scales down slightly when airborne)
+    // 1. Dynamic Contact Shadow
     const heightAboveGround = Math.max(0, this.groundY - this.y);
     const shadowFactor = Math.max(0.3, 1 - heightAboveGround / 200);
     const shadowWidth = this.hitboxWidth * 1.1 * shadowFactor;

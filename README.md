@@ -70,7 +70,9 @@ Acesse no navegador: http://localhost:8000
 │   ├── andando.gif
 │   ├── correndo.gif
 │   ├── pulo.gif
-│   └── atirando.gif
+│   ├── atirando.gif
+│   ├── atirando para baixo.gif
+│   └── atirando correndo.gif
 └── src/
     ├── player.js     # Classe Player, física, inércia e renderização dual-layer
     └── game.js       # Game loop determinístico, câmera e partículas
