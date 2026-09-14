@@ -4,6 +4,8 @@
  */
 
 import { Player } from './player.js';
+import { FireManEnemy } from './enemy.js';
+import { ProjectileManager } from './projectile.js';
 
 export class Game {
   constructor() {
@@ -13,16 +15,24 @@ export class Game {
     this.width = 960;
     this.height = 540;
 
+    // Gerenciador de Projéteis
+    this.projectileManager = new ProjectileManager();
+
     // 2. DOM Entity Elements
     this.playerContainer = document.getElementById('player-container');
     this.playerSprite = document.getElementById('player-sprite');
     this.playerFallback = document.getElementById('player-fallback');
+
+    this.enemyContainer = document.getElementById('enemy-container');
+    this.enemySprite = document.getElementById('enemy-sprite');
+    this.enemyFallback = document.getElementById('enemy-fallback');
 
     // 3. HUD Metric Elements
     this.fpsEl = document.getElementById('metric-fps');
     this.dtEl = document.getElementById('metric-dt');
     this.stateEl = document.getElementById('metric-state');
     this.posEl = document.getElementById('metric-pos');
+    this.enemyEl = document.getElementById('metric-enemy');
 
     // 4. Input Tracking (Instant Real-time)
     this.input = {
@@ -38,13 +48,21 @@ export class Game {
     // 6. Particle Systems
     this.ambientParticles = [];
     this.dustParticles = [];
+    this.fireParticles = [];
     this.initAmbientParticles(40);
 
-    // 7. Initialize Player
+    // 7. Initialize Entities
     this.player = new Player({
       x: 350,
       y: 440,
       scale: 0.6
+    });
+
+    this.enemy = new FireManEnemy({
+      x: 850,
+      y: 440,
+      scale: 0.6,
+      speed: 185
     });
 
     // 8. Toggles & Metrics
@@ -101,11 +119,27 @@ export class Game {
     }
   }
 
+  updateFireParticles(dt) {
+    for (let i = this.fireParticles.length - 1; i >= 0; i--) {
+      const p = this.fireParticles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.alpha -= dt * p.decay;
+      p.size = Math.max(0.2, p.size - dt * 1.5);
+
+      if (p.alpha <= 0) {
+        this.fireParticles.splice(i, 1);
+      }
+    }
+  }
+
   bindInputs() {
     window.addEventListener('keydown', (e) => {
       this.input.keys[e.code] = true;
       this.input.autoWalk = false;
       this.input.autoRun = false;
+      this.input.autoShoot = false;
+      this.input.autoShootDown = false;
 
       // Number keys 1-7
       if (e.code === 'Digit1') this.triggerStateAction('idle');
@@ -126,6 +160,8 @@ export class Game {
       this.input.isMouseDown = false;
       this.input.autoWalk = false;
       this.input.autoRun = false;
+      this.input.autoShoot = false;
+      this.input.autoShootDown = false;
     });
 
     const viewport = document.getElementById('viewport-container');
@@ -145,6 +181,8 @@ export class Game {
   triggerStateAction(stateKey) {
     this.input.autoWalk = false;
     this.input.autoRun = false;
+    this.input.autoShoot = false;
+    this.input.autoShootDown = false;
     this.player.isShooting = false;
     this.player.shootType = null;
     this.player.vx = 0;
@@ -164,15 +202,19 @@ export class Game {
         this.player.isGrounded = false;
       }
     } else if (stateKey === 'shoot') {
+      this.input.autoShoot = true;
       this.player.isShooting = true;
       this.player.shootType = 'shoot';
       this.player.setState('shoot');
     } else if (stateKey === 'shootDown') {
+      this.input.autoShoot = true;
+      this.input.autoShootDown = true;
       this.player.isShooting = true;
       this.player.shootType = 'shootDown';
       this.player.setState('shootDown');
     } else if (stateKey === 'shootRun') {
       this.input.autoWalk = true;
+      this.input.autoShoot = true;
       this.player.isShooting = true;
       this.player.shootType = 'shootRun';
       this.player.setState('shootRun');
@@ -221,6 +263,16 @@ export class Game {
       btnFlip.addEventListener('click', () => {
         this.player.facing = this.player.facing === 1 ? -1 : 1;
         btnFlip.querySelector('.status').textContent = this.player.facing === 1 ? 'RIGHT' : 'LEFT';
+      });
+    }
+
+    const btnEnemyReset = document.getElementById('btn-enemy-reset');
+    if (btnEnemyReset) {
+      btnEnemyReset.addEventListener('click', () => {
+        // Spawna o inimigo 500px na direção para onde o jogador está olhando
+        const spawnDistance = 500;
+        const targetX = this.player.x + (this.player.facing * spawnDistance);
+        this.enemy.reset(targetX);
       });
     }
   }
@@ -308,6 +360,19 @@ export class Game {
       this.ctx.arc(screenX, p.y, p.size, 0, Math.PI * 2);
       this.ctx.fill();
     }
+
+    // 8. Fire Ember Particles (Chamas do Homem de Fogo)
+    this.ctx.save();
+    for (const p of this.fireParticles) {
+      const screenX = p.x - this.cameraX;
+      this.ctx.fillStyle = `${p.color}${p.alpha})`;
+      this.ctx.shadowColor = '#ff6600';
+      this.ctx.shadowBlur = 8;
+      this.ctx.beginPath();
+      this.ctx.arc(screenX, p.y, p.size, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+    this.ctx.restore();
   }
 
   loop(timestamp) {
@@ -325,36 +390,66 @@ export class Game {
       this.fpsTimer = 0;
     }
 
-    // 1. Update Player
-    const newDust = this.player.update(this.input, dt);
+    // 1. Update Player & Enemy
+    const playerResult = this.player.update(this.input, dt);
+    const newDust = playerResult.particles || [];
     if (newDust.length > 0) {
       this.dustParticles.push(...newDust);
     }
+    const newShots = playerResult.shots || [];
+    if (newShots.length > 0) {
+      for (const shot of newShots) {
+        this.projectileManager.spawn(shot);
+      }
+    }
 
-    // 2. Smooth Camera Follow
+    const newFire = this.enemy.update(this.player, dt);
+    if (newFire.length > 0) {
+      this.fireParticles.push(...newFire);
+    }
+
+    // 2. Update Projectiles, Collisions & Impacts
+    this.projectileManager.update(dt, this.player.groundY, this.cameraX, this.enemy);
+
+    // 3. Smooth Camera Follow
     const targetCameraX = this.player.x - this.width * 0.4;
     this.cameraX += (targetCameraX - this.cameraX) * Math.min(1, 8 * dt);
 
-    // 3. Update Particles
+    // 4. Update Ambient & Particle Systems
     this.updateAmbientParticles(dt);
     this.updateDustParticles(dt);
+    this.updateFireParticles(dt);
 
-    // 4. Calculate Player Screen Coordinate
+    // 5. Calculate Entity Screen Coordinates
     const screenPlayerX = this.player.x - this.cameraX;
+    const screenEnemyX = this.enemy.x - this.cameraX;
 
-    // 5. Render
+    // 6. Render Canvas Elements
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.renderEnvironment();
+    this.projectileManager.render(this.ctx, this.cameraX);
+    this.enemy.renderCanvas(this.ctx, screenEnemyX, this.showHitbox);
     this.player.renderCanvas(this.ctx, screenPlayerX, this.showHitbox);
 
-    // 6. DOM Synchronization
+    // 7. DOM Synchronization
     this.player.syncDOM(this.playerContainer, this.playerSprite, this.playerFallback, screenPlayerX);
+    this.enemy.syncDOM(this.enemyContainer, this.enemySprite, this.enemyFallback, screenEnemyX);
 
-    // 7. Update HUD
+    // 8. Update HUD Metrics
     if (this.fpsEl) this.fpsEl.textContent = this.currentFps;
     if (this.dtEl) this.dtEl.textContent = `${(dt * 1000).toFixed(1)}ms`;
     if (this.stateEl) this.stateEl.textContent = this.player.currentState.toUpperCase();
     if (this.posEl) this.posEl.textContent = `X: ${Math.round(this.player.x)} | SPD: ${Math.round(Math.abs(this.player.vx))}`;
+
+    if (this.enemyEl) {
+      const dist = Math.round(this.player.x - this.enemy.x);
+      const side = dist > 0 ? '← ESQ' : 'DIR →';
+      if (!this.enemy.isAlive) {
+        this.enemyEl.textContent = `ABATIDO (RESPAWN ${Math.ceil(this.enemy.respawnTimer)}s)`;
+      } else {
+        this.enemyEl.textContent = `${this.enemy.state.toUpperCase()} [HP: ${this.enemy.health}] (${Math.abs(dist)}px ${side})`;
+      }
+    }
 
     if (!this.input.autoWalk) {
       this.updateStateButtons(this.player.currentState);
@@ -364,6 +459,8 @@ export class Game {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  new Game();
-});
+if (typeof window !== 'undefined') {
+  window.addEventListener('DOMContentLoaded', () => {
+    new Game();
+  });
+}

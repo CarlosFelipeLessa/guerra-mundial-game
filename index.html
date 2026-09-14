@@ -40,6 +40,10 @@
           <span class="label">POS:</span>
           <span id="metric-pos" class="value">X: 0 Y: 0</span>
         </div>
+        <div class="metric-chip highlight-orange">
+          <span class="label">INIMIGO:</span>
+          <span id="metric-enemy" class="value text-orange">PERSEGUINDO</span>
+        </div>
       </div>
     </header>
 
@@ -51,12 +55,24 @@
 
       <!-- Viewport Sprite Entity Layer (Native Hardware-Accelerated GIF Player) -->
       <div id="entity-layer" class="entity-layer">
+        <!-- Player Sprite Container -->
         <div id="player-container" class="player-container">
           <img id="player-sprite" class="player-sprite pixelated" src="gif/parado.gif" alt="Personagem do Jogo" />
           <div id="player-fallback" class="player-fallback hidden">
             <div class="fallback-box">
               <span class="fallback-text">ASSET ERROR</span>
               <span class="fallback-sub">GIF NOT FOUND</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enemy Sprite Container: Homem de Fogo -->
+        <div id="enemy-container" class="enemy-container">
+          <img id="enemy-sprite" class="enemy-sprite pixelated" src="gif/homem de fogo.gif" alt="Inimigo Homem de Fogo" />
+          <div id="enemy-fallback" class="player-fallback hidden">
+            <div class="fallback-box">
+              <span class="fallback-text">ASSET ERROR</span>
+              <span class="fallback-sub">HOMEM DE FOGO</span>
             </div>
           </div>
         </div>
@@ -112,6 +128,9 @@
           </button>
           <button type="button" class="btn-toggle" id="btn-flip" aria-pressed="false">
             FLIP: <span class="status">RIGHT</span>
+          </button>
+          <button type="button" class="btn-toggle" id="btn-enemy-reset" title="Reposiciona o Homem de Fogo a 500px à frente">
+            INIMIGO: <span class="status text-orange">SPAWN / RESET</span>
           </button>
         </div>
       </div>

@@ -53,6 +53,8 @@ export class Player {
     this.currentState = 'idle';
     this.isShooting = false;
     this.shootType = null; // 'shoot' | 'shootDown' | 'shootRun' | null
+    this.shootCooldown = 0;
+    this.fireRate = 0.14; // ~7 disparos por segundo em auto-fire
 
     // Asset Cache
     this.images = {};
@@ -90,13 +92,13 @@ export class Player {
     // 1. Inputs em tempo real
     const keyLeft = input.keys['ArrowLeft'] || input.keys['KeyA'] || input.keys['a'] || input.keys['A'];
     const keyRight = input.keys['ArrowRight'] || input.keys['KeyD'] || input.keys['d'] || input.keys['D'];
-    const keyDown = input.keys['ArrowDown'] || input.keys['KeyS'] || input.keys['s'] || input.keys['S'];
+    const keyDown = input.keys['ArrowDown'] || input.keys['KeyS'] || input.keys['s'] || input.keys['S'] || input.autoShootDown;
     const keyRun = input.keys['ShiftLeft'] || input.keys['ShiftRight'] || input.autoRun;
-    const keyShoot = input.keys['KeyF'] || input.keys['KeyX'] || input.keys['f'] || input.keys['F'] || input.keys['x'] || input.keys['X'] || input.isMouseDown;
+    const keyShoot = input.keys['KeyF'] || input.keys['KeyX'] || input.keys['f'] || input.keys['F'] || input.keys['x'] || input.keys['X'] || input.isMouseDown || input.autoShoot;
+
+    const spawnedShots = [];
 
     // 2. DISPARO IMEDIATO / CANCELAMENTO INSTANTÂNEO (ZERO DELAY)
-    // Se a tecla/clique de atirar estiver pressionada, ativa o tiro.
-    // O milissegundo em que SOLTAR, cancela o tiro instantaneamente!
     if (keyShoot) {
       this.isShooting = true;
       if (keyDown) {
@@ -106,10 +108,49 @@ export class Player {
       } else {
         this.shootType = 'shoot';
       }
+
+      this.shootCooldown -= dt;
+      if (this.shootCooldown <= 0) {
+        let muzzleX = this.x;
+        let muzzleY = this.y - 87;
+        let bvx = 0;
+        let bvy = 0;
+
+        if (this.shootType === 'shootDown') {
+          // Tiro para baixo: ponta do cano apontando para o chão
+          muzzleX = this.x + this.facing * 18;
+          muzzleY = this.y - 12;
+          bvx = 0;
+          bvy = 850;
+        } else if (this.shootType === 'shootRun') {
+          // Tiro correndo: corpo e fuzil inclinados
+          muzzleX = this.x + this.facing * 82;
+          muzzleY = this.y - 99;
+          bvx = this.facing * 850;
+          bvy = 0;
+        } else {
+          // Tiro parado ('shoot'): boca do silenciador do fuzil
+          muzzleX = this.x + this.facing * 72;
+          muzzleY = this.y - 104.5;
+          bvx = this.facing * 850;
+          bvy = 0;
+        }
+
+        spawnedShots.push({
+          x: muzzleX,
+          y: muzzleY,
+          vx: bvx,
+          vy: bvy,
+          type: this.shootType
+        });
+
+        this.shootCooldown = this.fireRate;
+      }
     } else {
       // SOLTOU O BOTÃO: ZERA NO MESMO FRAME!
       this.isShooting = false;
       this.shootType = null;
+      this.shootCooldown = 0;
     }
 
     // 3. Movimentação Horizontal e Bloqueio ao Atirar para Baixo
@@ -189,7 +230,10 @@ export class Player {
       this.setState('idle');
     }
 
-    return spawnedParticles;
+    return {
+      particles: spawnedParticles,
+      shots: spawnedShots
+    };
   }
 
   syncDOM(containerEl, spriteImgEl, fallbackEl, screenX) {
@@ -253,6 +297,21 @@ export class Player {
       ctx.fillStyle = '#ef4444';
       ctx.beginPath();
       ctx.arc(screenX, this.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Indicador do bocal da arma
+      let debugMuzzleX = screenX + this.facing * 72;
+      let debugMuzzleY = this.y - 104.5;
+      if (this.shootType === 'shootDown') {
+        debugMuzzleX = screenX + this.facing * 18;
+        debugMuzzleY = this.y - 12;
+      } else if (this.shootType === 'shootRun') {
+        debugMuzzleX = screenX + this.facing * 82;
+        debugMuzzleY = this.y - 99;
+      }
+      ctx.fillStyle = '#ffbb00';
+      ctx.beginPath();
+      ctx.arc(debugMuzzleX, debugMuzzleY, 4, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#00f0ff';

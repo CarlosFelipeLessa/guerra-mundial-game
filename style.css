@@ -153,9 +153,19 @@ html, body {
   background: rgba(0, 240, 255, 0.08);
 }
 
+.metric-chip.highlight-orange {
+  border-color: #ff6600;
+  background: rgba(255, 102, 0, 0.1);
+}
+
 .text-cyan {
   color: var(--accent-cyan) !important;
   text-shadow: 0 0 6px var(--accent-cyan-glow);
+}
+
+.text-orange {
+  color: #ff8800 !important;
+  text-shadow: 0 0 8px rgba(255, 102, 0, 0.6);
 }
 
 /* Game Viewport Container */
@@ -191,7 +201,7 @@ html, body {
   z-index: 2;
 }
 
-.player-container {
+.player-container, .enemy-container {
   position: absolute;
   top: 0;
   left: 0;
@@ -204,13 +214,17 @@ html, body {
 }
 
 /* Pixel Art Rendering Enforcement */
-.player-sprite {
+.player-sprite, .enemy-sprite {
   display: block;
   image-rendering: -moz-crisp-edges;
   image-rendering: -webkit-crisp-edges;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
+}
+
+.enemy-sprite {
+  filter: drop-shadow(0 0 14px rgba(255, 80, 0, 0.45)) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7));
 }
 
 /* Fallback Element for Broken / Missing Assets */
