@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYBER STRIKE 2D // Character Engine</title>
+  
+  <!-- Typography (ui-ux-pro-max standard) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Main Arcade Frame -->
+  <main class="arcade-cabinet" role="region" aria-label="Game Screen">
+    
+    <!-- Top HUD Terminal Bar -->
+    <header class="hud-top-bar">
+      <div class="hud-brand">
+        <span class="hud-led pulse"></span>
+        <h1 class="hud-title">CYBER_STRIKE // 2D CORE</h1>
+      </div>
+      <div class="hud-metrics">
+        <div class="metric-chip">
+          <span class="label">FPS:</span>
+          <span id="metric-fps" class="value">60</span>
+        </div>
+        <div class="metric-chip">
+          <span class="label">DT:</span>
+          <span id="metric-dt" class="value">16.6ms</span>
+        </div>
+        <div class="metric-chip highlight">
+          <span class="label">STATE:</span>
+          <span id="metric-state" class="value text-cyan">IDLE</span>
+        </div>
+        <div class="metric-chip">
+          <span class="label">POS:</span>
+          <span id="metric-pos" class="value">X: 0 Y: 0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Interactive Game Viewport -->
+    <section class="game-viewport-container" id="viewport-container">
+      
+      <!-- Canvas Layer (Background Grid, Horizon, Particles, Debug Hitbox) -->
+      <canvas id="game-canvas" width="960" height="540"></canvas>
+
+      <!-- Viewport Sprite Entity Layer (Native Hardware-Accelerated GIF Player) -->
+      <div id="entity-layer" class="entity-layer">
+        <div id="player-container" class="player-container">
+          <img id="player-sprite" class="player-sprite pixelated" src="gif/parado.gif" alt="Personagem do Jogo" />
+          <div id="player-fallback" class="player-fallback hidden">
+            <div class="fallback-box">
+              <span class="fallback-text">ASSET ERROR</span>
+              <span class="fallback-sub">GIF NOT FOUND</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Retro CRT Scanline Filter -->
+      <div id="crt-overlay" class="crt-overlay"></div>
+
+      <!-- Viewport Watermark / Overlay Badge -->
+      <div class="viewport-badge">MILESTONE 1: SPRITE DECK READY</div>
+    </section>
+
+    <!-- Bottom Command Deck / Animation Lab -->
+    <footer class="hud-command-deck">
+      
+      <!-- Animation State Trigger Rack -->
+      <div class="deck-group">
+        <span class="deck-label">ANIMATION STATE TESTER:</span>
+        <div class="button-rack">
+          <button type="button" class="btn-state active" data-state="idle" id="btn-idle">
+            <span class="btn-key">1</span> PARADO
+          </button>
+          <button type="button" class="btn-state" data-state="walk" id="btn-walk">
+            <span class="btn-key">2</span> ANDANDO
+          </button>
+          <button type="button" class="btn-state" data-state="run" id="btn-run">
+            <span class="btn-key">3</span> CORRENDO
+          </button>
+          <button type="button" class="btn-state" data-state="jump" id="btn-jump">
+            <span class="btn-key">4</span> PULO
+          </button>
+          <button type="button" class="btn-state" data-state="shoot" id="btn-shoot">
+            <span class="btn-key">5</span> ATIRANDO
+          </button>
+        </div>
+      </div>
+
+      <!-- Hardware & Visual Toggles -->
+      <div class="deck-group">
+        <span class="deck-label">SYSTEM TOGGLES:</span>
+        <div class="button-rack">
+          <button type="button" class="btn-toggle active" id="toggle-crt" aria-pressed="true">
+            CRT SCANLINES: <span class="status">ON</span>
+          </button>
+          <button type="button" class="btn-toggle active" id="toggle-hitbox" aria-pressed="true">
+            HITBOX DEBUG: <span class="status">ON</span>
+          </button>
+          <button type="button" class="btn-toggle" id="btn-flip" aria-pressed="false">
+            FLIP: <span class="status">RIGHT</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Instructions -->
+      <div class="deck-legend">
+        <span class="legend-item"><kbd>A</kbd>/<kbd>D</kbd> ou <kbd>&larr;</kbd>/<kbd>&rarr;</kbd>: Mover</span>
+        <span class="legend-item"><kbd>SHIFT</kbd>: Correr</span>
+        <span class="legend-item"><kbd>ESPAÇO</kbd>: Pular</span>
+        <span class="legend-item"><kbd>F</kbd> ou <kbd>CLIQUE</kbd>: Atirar</span>
+      </div>
+
+    </footer>
+
+  </main>
+
+  <script type="module" src="src/game.js"></script>
+</body>
+</html>
