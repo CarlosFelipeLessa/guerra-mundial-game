@@ -10,7 +10,8 @@ export const PLAYER_SPRITES = {
   jump: './gif/pulo.gif',
   shoot: './gif/atirando.gif',
   shootDown: './gif/atirando para baixo.gif',
-  shootRun: './gif/atirando correndo.gif'
+  shootRun: './gif/atirando correndo.gif',
+  shootDiagDown: './gif/atirando em diagonal para baixo.gif'
 };
 
 export class Player {
@@ -49,10 +50,10 @@ export class Player {
     this.hitboxWidth = 65;
     this.hitboxHeight = 110;
 
-    // States: 'idle' | 'walk' | 'run' | 'jump' | 'shoot' | 'shootDown' | 'shootRun'
+    // States: 'idle' | 'walk' | 'run' | 'jump' | 'shoot' | 'shootDown' | 'shootRun' | 'shootDiagDown'
     this.currentState = 'idle';
     this.isShooting = false;
-    this.shootType = null; // 'shoot' | 'shootDown' | 'shootRun' | null
+    this.shootType = null; // 'shoot' | 'shootDown' | 'shootRun' | 'shootDiagDown' | null
     this.shootCooldown = 0;
     this.fireRate = 0.14; // ~7 disparos por segundo em auto-fire
 
@@ -84,7 +85,7 @@ export class Player {
    * Update character physics, input, and state with ZERO input delay
    * @param {Object} input - { keys, isMouseDown, autoWalk, autoRun }
    * @param {number} dt - Delta time in seconds
-   * @returns {Array} Array of newly spawned footstep particles
+   * @returns {Object} Object containing spawned particles and shots
    */
   update(input, dt) {
     const spawnedParticles = [];
@@ -92,7 +93,7 @@ export class Player {
     // 1. Inputs em tempo real
     const keyLeft = input.keys['ArrowLeft'] || input.keys['KeyA'] || input.keys['a'] || input.keys['A'];
     const keyRight = input.keys['ArrowRight'] || input.keys['KeyD'] || input.keys['d'] || input.keys['D'];
-    const keyDown = input.keys['ArrowDown'] || input.keys['KeyS'] || input.keys['s'] || input.keys['S'] || input.autoShootDown;
+    const keyDown = input.keys['ArrowDown'] || input.keys['KeyS'] || input.keys['s'] || input.keys['S'] || input.autoShootDown || input.autoShootDiagDown;
     const keyRun = input.keys['ShiftLeft'] || input.keys['ShiftRight'] || input.autoRun;
     const keyShoot = input.keys['KeyF'] || input.keys['KeyX'] || input.keys['f'] || input.keys['F'] || input.keys['x'] || input.keys['X'] || input.isMouseDown || input.autoShoot;
 
@@ -101,27 +102,41 @@ export class Player {
     // 2. DISPARO IMEDIATO / CANCELAMENTO INSTANTÂNEO (ZERO DELAY)
     if (keyShoot) {
       this.isShooting = true;
-      if (keyDown) {
+      if (keyDown && (keyLeft || keyRight || input.autoShootDiagDown)) {
+        // Diagonal para baixo: S + A/D + F
+        this.shootType = 'shootDiagDown';
+      } else if (keyDown) {
+        // Vertical para baixo: S + F
         this.shootType = 'shootDown';
       } else if (keyLeft || keyRight || input.autoWalk) {
+        // Tiro correndo
         this.shootType = 'shootRun';
       } else {
+        // Tiro parado horizontal
         this.shootType = 'shoot';
       }
 
       this.shootCooldown -= dt;
       if (this.shootCooldown <= 0) {
         let muzzleX = this.x;
-        let muzzleY = this.y - 87;
+        let muzzleY = this.y - 104.5;
         let bvx = 0;
         let bvy = 0;
 
         if (this.shootType === 'shootDown') {
-          // Tiro para baixo: ponta do cano apontando para o chão
+          // Tiro vertical para baixo
           muzzleX = this.x + this.facing * 18;
           muzzleY = this.y - 12;
           bvx = 0;
           bvy = 850;
+        } else if (this.shootType === 'shootDiagDown') {
+          // Tiro em diagonal para baixo (~22.5 graus) alinhado com a ponta da chama do fuzil
+          muzzleX = this.x + this.facing * 104;
+          muzzleY = this.y - 46;
+          const diagSpeed = 850;
+          const diagAngle = 22.5 * (Math.PI / 180);
+          bvx = this.facing * Math.cos(diagAngle) * diagSpeed;
+          bvy = Math.sin(diagAngle) * diagSpeed;
         } else if (this.shootType === 'shootRun') {
           // Tiro correndo: corpo e fuzil inclinados
           muzzleX = this.x + this.facing * 82;
@@ -153,12 +168,12 @@ export class Player {
       this.shootCooldown = 0;
     }
 
-    // 3. Movimentação Horizontal e Bloqueio ao Atirar para Baixo
+    // 3. Movimentação Horizontal e Bloqueio ao Atirar para Baixo / Diagonal
     let moveDir = 0;
-    const isShootingDown = this.isShooting && this.shootType === 'shootDown';
+    const isStationaryShoot = this.isShooting && (this.shootType === 'shootDown' || this.shootType === 'shootDiagDown');
 
-    if (isShootingDown) {
-      // Bloqueio imediato de movimento ao atirar para baixo (sem deslizar)
+    if (isStationaryShoot) {
+      // Posição firme de mira estática para baixo ou diagonal
       moveDir = 0;
       this.vx = 0;
       if (keyLeft) this.facing = -1;
@@ -305,6 +320,9 @@ export class Player {
       if (this.shootType === 'shootDown') {
         debugMuzzleX = screenX + this.facing * 18;
         debugMuzzleY = this.y - 12;
+      } else if (this.shootType === 'shootDiagDown') {
+        debugMuzzleX = screenX + this.facing * 104;
+        debugMuzzleY = this.y - 46;
       } else if (this.shootType === 'shootRun') {
         debugMuzzleX = screenX + this.facing * 82;
         debugMuzzleY = this.y - 99;

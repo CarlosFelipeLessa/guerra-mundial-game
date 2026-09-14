@@ -17,10 +17,16 @@
   - Linked perspective floor grid lines to `cameraX` so the ground visibly rolls backwards under player footsteps.
   - Interactive test buttons now trigger animated walks/runs rather than locking the sprite in place.
 
-## GitHub Deployment
-- Git repository initialized on branch main.
-- Remote repository created: https://github.com/CarlosFelipeLessa/guerra-mundial-game.
-- Full codebase, sprites, README.md and .gitignore pushed successfully.
+## Novo Asset e Estado: Atirando em Diagonal para Baixo
+- Integrado asset `gif/atirando em diagonal para baixo.gif` (2 quadros a 80ms, 640x360).
+- Adicionado estado `shootDiagDown` em `src/player.js`:
+  - Ativação via atalho <kbd>S</kbd> + <kbd>A/D</kbd> + <kbd>F</kbd> (ou clique com mouse) ou botão `8 DIAG. BAIXO`.
+  - Posição firme de mira estática no solo com alinhamento de pés em Y: 278.
+  - **Calibração de Saída da Ponta da Arma/Chama**:
+    - Ajustado o bocal para `dx: +104px` e `dy: -46px` (anteriormente `64px / -56px`), posicionando o surgimento dos projéteis e o flash exatamente na ponta da labareda de fogo que sai do fuzil de precisão.
+    - Vetor de trajetória e rotação de projétil calibrados para o ângulo contínuo de **22.5°** (`bvx = facing * 785 px/s`, `bvy = 325 px/s`), alinhado perfeitamente com a alma do cano e a labareda do sprite.
+- Atualizado rack de botões com atalho `8 DIAG. BAIXO` e legenda de comandos em `index.html`.
+
 
 ## Sistema de Projétil da Arma (disparo.gif)
 - Integrado asset `gif/disparo.gif` como projétil disparado pelo jogador.

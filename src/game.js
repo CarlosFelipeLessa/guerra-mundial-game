@@ -149,6 +149,7 @@ export class Game {
       if (e.code === 'Digit5') this.triggerStateAction('shoot');
       if (e.code === 'Digit6') this.triggerStateAction('shootDown');
       if (e.code === 'Digit7') this.triggerStateAction('shootRun');
+      if (e.code === 'Digit8') this.triggerStateAction('shootDiagDown');
     });
 
     window.addEventListener('keyup', (e) => {
@@ -162,6 +163,7 @@ export class Game {
       this.input.autoRun = false;
       this.input.autoShoot = false;
       this.input.autoShootDown = false;
+      this.input.autoShootDiagDown = false;
     });
 
     const viewport = document.getElementById('viewport-container');
@@ -183,6 +185,7 @@ export class Game {
     this.input.autoRun = false;
     this.input.autoShoot = false;
     this.input.autoShootDown = false;
+    this.input.autoShootDiagDown = false;
     this.player.isShooting = false;
     this.player.shootType = null;
     this.player.vx = 0;
@@ -218,6 +221,12 @@ export class Game {
       this.player.isShooting = true;
       this.player.shootType = 'shootRun';
       this.player.setState('shootRun');
+    } else if (stateKey === 'shootDiagDown') {
+      this.input.autoShoot = true;
+      this.input.autoShootDiagDown = true;
+      this.player.isShooting = true;
+      this.player.shootType = 'shootDiagDown';
+      this.player.setState('shootDiagDown');
     }
 
     this.updateStateButtons(stateKey);

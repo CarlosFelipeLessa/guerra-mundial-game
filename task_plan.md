@@ -36,3 +36,10 @@
 - [x] Add horizontal, running, and downward shooting angles
 - [x] Add collision detection and damage system on `FireManEnemy` with hit flash and health bar
 - [x] Synchronize codebases across Desktop and Documents repositories
+
+## Phase 6: Diagonal Downward Shooting State
+- [x] Inspect asset `gif/atirando em diagonal para baixo.gif` and calibrate muzzle to flame blast tip (angle: 22.5°, contact: 278, muzzle: dx=+104, dy=-46)
+- [x] Add `shootDiagDown` in `PLAYER_SPRITES` and `src/player.js`
+- [x] Map input combination (<kbd>S</kbd> + <kbd>A/D</kbd> + <kbd>F</kbd>) and button `8 DIAG. BAIXO`
+- [x] Calculate diagonal velocity vectors (`vx = ±785 px/s`, `vy = 325 px/s`) with rotated projectile and ground/enemy collisions
+- [x] Synchronize codebases across Desktop and Documents repositories
