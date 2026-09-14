@@ -24,7 +24,7 @@ export class Game {
     this.stateEl = document.getElementById('metric-state');
     this.posEl = document.getElementById('metric-pos');
 
-    // 4. Input Tracking
+    // 4. Input Tracking (Instant Real-time)
     this.input = {
       keys: {},
       isMouseDown: false,
@@ -131,7 +131,7 @@ export class Game {
     const viewport = document.getElementById('viewport-container');
     if (viewport) {
       viewport.addEventListener('mousedown', (e) => {
-        if (e.button === 0) { // Botão esquerdo
+        if (e.button === 0) {
           this.input.isMouseDown = true;
         }
       });
@@ -143,35 +143,39 @@ export class Game {
   }
 
   triggerStateAction(stateKey) {
+    this.input.autoWalk = false;
+    this.input.autoRun = false;
+    this.player.isShooting = false;
+    this.player.shootType = null;
+    this.player.vx = 0;
+
     if (stateKey === 'idle') {
-      this.input.autoWalk = false;
-      this.input.autoRun = false;
-      this.player.isShooting = false;
-      this.player.shootType = null;
-      this.player.shootTimer = 0;
-      this.player.vx = 0;
       this.player.setState('idle');
     } else if (stateKey === 'walk') {
       this.input.autoWalk = true;
-      this.input.autoRun = false;
+      this.player.setState('walk');
     } else if (stateKey === 'run') {
       this.input.autoWalk = true;
       this.input.autoRun = true;
+      this.player.setState('run');
     } else if (stateKey === 'jump') {
       if (this.player.isGrounded) {
         this.player.vy = this.player.jumpForce;
         this.player.isGrounded = false;
       }
     } else if (stateKey === 'shoot') {
-      this.player.triggerShoot('shoot');
+      this.player.isShooting = true;
+      this.player.shootType = 'shoot';
+      this.player.setState('shoot');
     } else if (stateKey === 'shootDown') {
-      this.input.autoWalk = false;
-      this.input.autoRun = false;
-      this.player.vx = 0;
-      this.player.triggerShoot('shootDown');
+      this.player.isShooting = true;
+      this.player.shootType = 'shootDown';
+      this.player.setState('shootDown');
     } else if (stateKey === 'shootRun') {
       this.input.autoWalk = true;
-      this.player.triggerShoot('shootRun');
+      this.player.isShooting = true;
+      this.player.shootType = 'shootRun';
+      this.player.setState('shootRun');
     }
 
     this.updateStateButtons(stateKey);

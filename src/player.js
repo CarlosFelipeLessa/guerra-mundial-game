@@ -1,6 +1,6 @@
 /**
  * CYBER_STRIKE 2D // Player Controller & Sprite Manager
- * Handles character state, movement physics, inertia, and dual-layer rendering.
+ * Zero-Delay arcade responsiveness between movement, shooting, and idle states.
  */
 
 export const PLAYER_SPRITES = {
@@ -11,14 +11,6 @@ export const PLAYER_SPRITES = {
   shoot: './gif/atirando.gif',
   shootDown: './gif/atirando para baixo.gif',
   shootRun: './gif/atirando correndo.gif'
-};
-
-// Duração precisa de cada animação de disparo (calculada pelos quadros a 80ms)
-// Evita cancelamento prematuro para o estado 'parado'
-export const SHOOT_DURATIONS = {
-  shoot: 0.96,       // 12 quadros x 80ms = 0.96s
-  shootDown: 0.88,   // 11 quadros x 80ms = 0.88s
-  shootRun: 0.65     // Ciclo de corrida com disparo
 };
 
 export class Player {
@@ -34,15 +26,13 @@ export class Player {
     this.y = y;
     this.groundY = y;
     
-    // Physical Velocity & Inertia
+    // Instant Velocity
     this.vx = 0;
     this.vy = 0;
     
-    // Calibrated Speeds for 1:1 Stride-to-Ground Synchronization
+    // Speeds
     this.speedWalk = 130;
     this.speedRun = 250;
-    this.acceleration = 1200; // Snappy ramp-up
-    this.friction = 1600;     // Instant stop without sliding
     
     // Jump Physics
     this.jumpForce = -480;
@@ -61,7 +51,6 @@ export class Player {
 
     // States: 'idle' | 'walk' | 'run' | 'jump' | 'shoot' | 'shootDown' | 'shootRun'
     this.currentState = 'idle';
-    this.shootTimer = 0;
     this.isShooting = false;
     this.shootType = null; // 'shoot' | 'shootDown' | 'shootRun' | null
 
@@ -90,21 +79,7 @@ export class Player {
   }
 
   /**
-   * Ativa o disparo garantindo que a animação dure o tempo total do GIF
-   * @param {'shoot' | 'shootDown' | 'shootRun'} type
-   */
-  triggerShoot(type = 'shoot') {
-    this.shootType = type;
-    this.isShooting = true;
-    this.shootTimer = SHOOT_DURATIONS[type] || 0.90;
-    if (type === 'shootDown') {
-      this.vx = 0; // Trava imediata de solo ao atirar para baixo
-    }
-    this.setState(type);
-  }
-
-  /**
-   * Update character physics, input, and state
+   * Update character physics, input, and state with ZERO input delay
    * @param {Object} input - { keys, isMouseDown, autoWalk, autoRun }
    * @param {number} dt - Delta time in seconds
    * @returns {Array} Array of newly spawned footstep particles
@@ -112,59 +87,65 @@ export class Player {
   update(input, dt) {
     const spawnedParticles = [];
 
-    // 1. Read Inputs
+    // 1. Inputs em tempo real
     const keyLeft = input.keys['ArrowLeft'] || input.keys['KeyA'] || input.keys['a'] || input.keys['A'];
     const keyRight = input.keys['ArrowRight'] || input.keys['KeyD'] || input.keys['d'] || input.keys['D'];
     const keyDown = input.keys['ArrowDown'] || input.keys['KeyS'] || input.keys['s'] || input.keys['S'];
     const keyRun = input.keys['ShiftLeft'] || input.keys['ShiftRight'] || input.autoRun;
     const keyShoot = input.keys['KeyF'] || input.keys['KeyX'] || input.keys['f'] || input.keys['F'] || input.keys['x'] || input.keys['X'] || input.isMouseDown;
 
-    // BLOQUEIO TOTAL DE DESLIZAMENTO LATERAL AO ATIRAR PARA BAIXO:
-    // Se o personagem estiver atirando para baixo OU segurando mira para baixo + tiro
-    const isShootingDown = (this.isShooting && this.shootType === 'shootDown') || (keyShoot && keyDown);
+    // 2. DISPARO IMEDIATO / CANCELAMENTO INSTANTÂNEO (ZERO DELAY)
+    // Se a tecla/clique de atirar estiver pressionada, ativa o tiro.
+    // O milissegundo em que SOLTAR, cancela o tiro instantaneamente!
+    if (keyShoot) {
+      this.isShooting = true;
+      if (keyDown) {
+        this.shootType = 'shootDown';
+      } else if (keyLeft || keyRight || input.autoWalk) {
+        this.shootType = 'shootRun';
+      } else {
+        this.shootType = 'shoot';
+      }
+    } else {
+      // SOLTOU O BOTÃO: ZERA NO MESMO FRAME!
+      this.isShooting = false;
+      this.shootType = null;
+    }
 
+    // 3. Movimentação Horizontal e Bloqueio ao Atirar para Baixo
     let moveDir = 0;
+    const isShootingDown = this.isShooting && this.shootType === 'shootDown';
 
     if (isShootingDown) {
-      // Bloqueia qualquer movimentação horizontal e zera inércia
+      // Bloqueio imediato de movimento ao atirar para baixo (sem deslizar)
       moveDir = 0;
       this.vx = 0;
-      // Permite apenas virar para a esquerda/direita no mesmo ponto
       if (keyLeft) this.facing = -1;
       if (keyRight) this.facing = 1;
     } else {
       if (keyLeft) moveDir -= 1;
       if (keyRight) moveDir += 1;
 
-      // Virtual test mode
+      // Modo de teste automatizado
       if (moveDir === 0 && input.autoWalk) {
         moveDir = this.facing;
       }
-    }
 
-    // 2. Velocity Acceleration & Friction
-    const targetSpeed = keyRun ? this.speedRun : this.speedWalk;
-    const targetVx = moveDir * targetSpeed;
-
-    if (moveDir !== 0) {
-      if (this.vx < targetVx) {
-        this.vx = Math.min(this.vx + this.acceleration * dt, targetVx);
-      } else if (this.vx > targetVx) {
-        this.vx = Math.max(this.vx - this.acceleration * dt, targetVx);
-      }
-      this.facing = moveDir;
-    } else {
-      if (this.vx > 0) {
-        this.vx = Math.max(0, this.vx - this.friction * dt);
-      } else if (this.vx < 0) {
-        this.vx = Math.min(0, this.vx + this.friction * dt);
+      // Resposta instantânea de velocidade: sem delay de aceleração/desaceleração lenta
+      if (moveDir !== 0) {
+        this.facing = moveDir;
+        const targetSpeed = keyRun ? this.speedRun : this.speedWalk;
+        this.vx = moveDir * targetSpeed;
+      } else {
+        // Parada imediata ao soltar a tecla de movimento
+        this.vx = 0;
       }
     }
 
-    // Apply displacement
+    // Aplica deslocamento
     this.x += this.vx * dt;
 
-    // 3. Jump Physics
+    // 4. Salto e Gravidade
     const keyJump = input.keys['Space'] || input.keys['KeyW'] || input.keys['ArrowUp'] || input.keys['w'] || input.keys['W'];
     if (keyJump && this.isGrounded && !isShootingDown) {
       this.vy = this.jumpForce;
@@ -182,26 +163,9 @@ export class Player {
       }
     }
 
-    const isMoving = Math.abs(this.vx) > 10;
+    // 5. TRANSIÇÃO DE ESTADO IMEDIATA (ZERO DELAY)
+    const isMoving = Math.abs(this.vx) > 0;
 
-    // 4. Disparo Contínuo ou Disparo Único
-    if (keyShoot) {
-      if (keyDown) {
-        this.triggerShoot('shootDown');
-      } else if (isMoving) {
-        this.triggerShoot('shootRun');
-      } else {
-        this.triggerShoot('shoot');
-      }
-    } else if (this.isShooting) {
-      this.shootTimer -= dt;
-      if (this.shootTimer <= 0) {
-        this.isShooting = false;
-        this.shootType = null;
-      }
-    }
-
-    // 5. Transição de Estado Estrita
     if (this.isShooting && this.shootType) {
       this.setState(this.shootType);
     } else if (!this.isGrounded) {
@@ -221,6 +185,7 @@ export class Player {
         });
       }
     } else {
+      // RETORNO INSTANTÂNEO PARA PARADO: sem nenhum delay ou temporizador residual!
       this.setState('idle');
     }
 
@@ -292,7 +257,7 @@ export class Player {
 
       ctx.fillStyle = '#00f0ff';
       ctx.font = '12px "VT323", monospace';
-      ctx.fillText(`STATE: ${this.currentState.toUpperCase()} | TIMER: ${this.shootTimer.toFixed(2)}s | VX: ${Math.round(this.vx)}`, boxLeft, boxTop - 8);
+      ctx.fillText(`STATE: ${this.currentState.toUpperCase()} | VX: ${Math.round(this.vx)}`, boxLeft, boxTop - 8);
     }
 
     ctx.restore();
