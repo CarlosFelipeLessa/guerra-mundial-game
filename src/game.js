@@ -27,6 +27,7 @@ export class Game {
     // 4. Input Tracking
     this.input = {
       keys: {},
+      isMouseDown: false,
       autoWalk: false,
       autoRun: false
     };
@@ -34,7 +35,7 @@ export class Game {
     // 5. Camera & Parallax Tracking
     this.cameraX = 0;
 
-    // 6. Particle Systems (Ambient Cyber Motes + Footstep Ground Dust)
+    // 6. Particle Systems
     this.ambientParticles = [];
     this.dustParticles = [];
     this.initAmbientParticles(40);
@@ -114,18 +115,6 @@ export class Game {
       if (e.code === 'Digit5') this.triggerStateAction('shoot');
       if (e.code === 'Digit6') this.triggerStateAction('shootDown');
       if (e.code === 'Digit7') this.triggerStateAction('shootRun');
-
-      // Shoot keys
-      if (e.code === 'KeyF' || e.code === 'KeyX') {
-        const keyDown = this.input.keys['ArrowDown'] || this.input.keys['KeyS'] || this.input.keys['s'] || this.input.keys['S'];
-        if (keyDown) {
-          this.player.triggerShoot('down');
-        } else if (Math.abs(this.player.vx) > 10) {
-          this.player.triggerShoot('run');
-        } else {
-          this.player.triggerShoot();
-        }
-      }
     });
 
     window.addEventListener('keyup', (e) => {
@@ -134,29 +123,32 @@ export class Game {
 
     window.addEventListener('blur', () => {
       this.input.keys = {};
+      this.input.isMouseDown = false;
       this.input.autoWalk = false;
       this.input.autoRun = false;
     });
 
     const viewport = document.getElementById('viewport-container');
     if (viewport) {
-      viewport.addEventListener('mousedown', () => {
-        const keyDown = this.input.keys['ArrowDown'] || this.input.keys['KeyS'] || this.input.keys['s'] || this.input.keys['S'];
-        if (keyDown) {
-          this.player.triggerShoot('down');
-        } else if (Math.abs(this.player.vx) > 10) {
-          this.player.triggerShoot('run');
-        } else {
-          this.player.triggerShoot();
+      viewport.addEventListener('mousedown', (e) => {
+        if (e.button === 0) { // Botão esquerdo
+          this.input.isMouseDown = true;
         }
       });
     }
+
+    window.addEventListener('mouseup', () => {
+      this.input.isMouseDown = false;
+    });
   }
 
   triggerStateAction(stateKey) {
     if (stateKey === 'idle') {
       this.input.autoWalk = false;
       this.input.autoRun = false;
+      this.player.isShooting = false;
+      this.player.shootType = null;
+      this.player.shootTimer = 0;
       this.player.vx = 0;
       this.player.setState('idle');
     } else if (stateKey === 'walk') {
@@ -171,12 +163,12 @@ export class Game {
         this.player.isGrounded = false;
       }
     } else if (stateKey === 'shoot') {
-      this.player.triggerShoot();
+      this.player.triggerShoot('shoot');
     } else if (stateKey === 'shootDown') {
-      this.player.triggerShoot('down');
+      this.player.triggerShoot('shootDown');
     } else if (stateKey === 'shootRun') {
       this.input.autoWalk = true;
-      this.player.triggerShoot('run');
+      this.player.triggerShoot('shootRun');
     }
 
     this.updateStateButtons(stateKey);

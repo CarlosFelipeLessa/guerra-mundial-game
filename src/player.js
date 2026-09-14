@@ -13,6 +13,14 @@ export const PLAYER_SPRITES = {
   shootRun: './gif/atirando correndo.gif'
 };
 
+// Duração precisa de cada animação de disparo (calculada pelos quadros a 80ms)
+// Evita cancelamento prematuro para o estado 'parado'
+export const SHOOT_DURATIONS = {
+  shoot: 0.96,       // 12 quadros x 80ms = 0.96s
+  shootDown: 0.88,   // 11 quadros x 80ms = 0.88s
+  shootRun: 0.65     // Ciclo de corrida com disparo
+};
+
 export class Player {
   /**
    * @param {Object} options
@@ -55,7 +63,7 @@ export class Player {
     this.currentState = 'idle';
     this.shootTimer = 0;
     this.isShooting = false;
-    this.shootType = null; // 'down' | 'run' | null
+    this.shootType = null; // 'shoot' | 'shootDown' | 'shootRun' | null
 
     // Asset Cache
     this.images = {};
@@ -82,40 +90,42 @@ export class Player {
   }
 
   /**
-   * Triggers shooting with an optional forced direction
-   * @param {'down' | 'run' | null} forcedType
+   * Ativa o disparo garantindo que a animação dure o tempo total do GIF
+   * @param {'shoot' | 'shootDown' | 'shootRun'} type
    */
-  triggerShoot(forcedType = null) {
+  triggerShoot(type = 'shoot') {
+    this.shootType = type;
     this.isShooting = true;
-    this.shootTimer = 0.45;
-    this.shootType = forcedType;
+    this.shootTimer = SHOOT_DURATIONS[type] || 0.90;
+    this.setState(type);
   }
 
   /**
    * Update character physics, input, and state
-   * @param {Object} input - { keys, autoWalk, autoRun }
+   * @param {Object} input - { keys, isMouseDown, autoWalk, autoRun }
    * @param {number} dt - Delta time in seconds
    * @returns {Array} Array of newly spawned footstep particles
    */
   update(input, dt) {
     const spawnedParticles = [];
 
-    // 1. Read Movement Intent (Keyboard or Auto Test)
+    // 1. Read Movement Intent
     let moveDir = 0;
     const keyLeft = input.keys['ArrowLeft'] || input.keys['KeyA'] || input.keys['a'] || input.keys['A'];
     const keyRight = input.keys['ArrowRight'] || input.keys['KeyD'] || input.keys['d'] || input.keys['D'];
     const keyDown = input.keys['ArrowDown'] || input.keys['KeyS'] || input.keys['s'] || input.keys['S'];
     const keyRun = input.keys['ShiftLeft'] || input.keys['ShiftRight'] || input.autoRun;
+    const keyShoot = input.keys['KeyF'] || input.keys['KeyX'] || input.keys['f'] || input.keys['F'] || input.keys['x'] || input.keys['X'] || input.isMouseDown;
 
     if (keyLeft) moveDir -= 1;
     if (keyRight) moveDir += 1;
 
-    // If no key is pressed, check virtual test mode
+    // Virtual test mode
     if (moveDir === 0 && input.autoWalk) {
       moveDir = this.facing;
     }
 
-    // 2. Velocity Acceleration & Friction (Eliminates Ice-Skating)
+    // 2. Velocity Acceleration & Friction
     const targetSpeed = keyRun ? this.speedRun : this.speedWalk;
     const targetVx = moveDir * targetSpeed;
 
@@ -137,7 +147,7 @@ export class Player {
     // Apply displacement
     this.x += this.vx * dt;
 
-    // 3. Jump Physics & Airborne State
+    // 3. Jump Physics
     const keyJump = input.keys['Space'] || input.keys['KeyW'] || input.keys['ArrowUp'] || input.keys['w'] || input.keys['W'];
     if (keyJump && this.isGrounded) {
       this.vy = this.jumpForce;
@@ -155,8 +165,20 @@ export class Player {
       }
     }
 
-    // 4. Shooting Timer
-    if (this.isShooting) {
+    const isMoving = Math.abs(this.vx) > 10;
+
+    // 4. Disparo Contínuo ou Disparo Único
+    if (keyShoot) {
+      // Se a tecla de disparo estiver sendo mantida pressionada
+      if (keyDown) {
+        this.triggerShoot('shootDown');
+      } else if (isMoving) {
+        this.triggerShoot('shootRun');
+      } else {
+        this.triggerShoot('shoot');
+      }
+    } else if (this.isShooting) {
+      // Se soltou a tecla, decrementa o temporizador para concluir a animação completa
       this.shootTimer -= dt;
       if (this.shootTimer <= 0) {
         this.isShooting = false;
@@ -164,23 +186,15 @@ export class Player {
       }
     }
 
-    // 5. Crisp State Transition Logic
-    const isMoving = Math.abs(this.vx) > 10;
-
-    if (this.isShooting) {
-      if (this.shootType === 'down' || (this.shootType === null && keyDown)) {
-        this.setState('shootDown');
-      } else if (this.shootType === 'run' || (this.shootType === null && isMoving)) {
-        this.setState('shootRun');
-      } else {
-        this.setState('shoot');
-      }
+    // 5. Transição de Estado Estrita
+    // REGRA DE OURO: Enquanto estiver atirando (isShooting = true), o estado 'parado' NUNCA cancela o tiro!
+    if (this.isShooting && this.shootType) {
+      this.setState(this.shootType);
     } else if (!this.isGrounded) {
       this.setState('jump');
     } else if (isMoving) {
       this.setState(keyRun ? 'run' : 'walk');
 
-      // Spawn Footstep Dust Particles when moving on ground
       if (Math.random() < (keyRun ? 0.35 : 0.18)) {
         spawnedParticles.push({
           x: this.x - this.facing * 18,
@@ -193,27 +207,19 @@ export class Player {
         });
       }
     } else {
-      // INSTANT IDLE SNAP
+      // Só volta a ficar parado quando o tiro tiver terminado por completo!
       this.setState('idle');
     }
 
     return spawnedParticles;
   }
 
-  /**
-   * Hardware-accelerated DOM synchronization
-   * @param {HTMLElement} containerEl 
-   * @param {HTMLImageElement} spriteImgEl 
-   * @param {HTMLElement} fallbackEl 
-   * @param {number} screenX - Render X coordinate in screen/viewport space
-   */
   syncDOM(containerEl, spriteImgEl, fallbackEl, screenX) {
     if (!containerEl || !spriteImgEl) return;
 
     const displayWidth = this.originalWidth * this.scale;
     const displayHeight = this.originalHeight * this.scale;
 
-    // Anchor at feet (~77% of frame height)
     const feetOffsetY = displayHeight * 0.77;
     const left = screenX - displayWidth / 2;
     const top = this.y - feetOffsetY;
@@ -228,7 +234,6 @@ export class Player {
       spriteImgEl.src = expectedSrc;
     }
 
-    // Horizontal direction
     spriteImgEl.style.transform = `scaleX(${this.facing})`;
 
     const hasError = this.assetErrors[this.currentState];
@@ -241,16 +246,9 @@ export class Player {
     }
   }
 
-  /**
-   * Renders dynamic shadow and debug markers on canvas
-   * @param {CanvasRenderingContext2D} ctx 
-   * @param {number} screenX 
-   * @param {boolean} showDebug 
-   */
   renderCanvas(ctx, screenX, showDebug = false) {
     ctx.save();
 
-    // 1. Dynamic Contact Shadow
     const heightAboveGround = Math.max(0, this.groundY - this.y);
     const shadowFactor = Math.max(0.3, 1 - heightAboveGround / 200);
     const shadowWidth = this.hitboxWidth * 1.1 * shadowFactor;
@@ -261,7 +259,6 @@ export class Player {
     ctx.ellipse(screenX, this.groundY, shadowWidth / 2, shadowHeight / 2, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. Debug Hitbox
     if (showDebug) {
       const boxLeft = screenX - this.hitboxWidth / 2;
       const boxTop = this.y - this.hitboxHeight;
@@ -275,16 +272,14 @@ export class Player {
       ctx.fillStyle = 'rgba(0, 240, 255, 0.08)';
       ctx.fillRect(boxLeft, boxTop, this.hitboxWidth, this.hitboxHeight);
 
-      // Feet anchor point
       ctx.fillStyle = '#ef4444';
       ctx.beginPath();
       ctx.arc(screenX, this.y, 4, 0, Math.PI * 2);
       ctx.fill();
 
-      // Status Label
       ctx.fillStyle = '#00f0ff';
       ctx.font = '12px "VT323", monospace';
-      ctx.fillText(`STATE: ${this.currentState.toUpperCase()} | VX: ${Math.round(this.vx)}`, boxLeft, boxTop - 8);
+      ctx.fillText(`STATE: ${this.currentState.toUpperCase()} | TIMER: ${this.shootTimer.toFixed(2)}s`, boxLeft, boxTop - 8);
     }
 
     ctx.restore();
