@@ -16,3 +16,8 @@
   - Added parallax cyberpunk skyline.
   - Linked perspective floor grid lines to `cameraX` so the ground visibly rolls backwards under player footsteps.
   - Interactive test buttons now trigger animated walks/runs rather than locking the sprite in place.
+
+## GitHub Deployment
+- Git repository initialized on branch main.
+- Remote repository created: https://github.com/CarlosFelipeLessa/guerra-mundial-game.
+- Full codebase, sprites, README.md and .gitignore pushed successfully.
