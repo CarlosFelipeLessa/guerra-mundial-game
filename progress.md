@@ -22,6 +22,9 @@
 - Remote repository created: https://github.com/CarlosFelipeLessa/guerra-mundial-game.
 - Full codebase, sprites, README.md and .gitignore pushed successfully.
 
+## Otimização e Recorte dos GIFs
+- Recorte e ajuste dos assets `gif/atirando correndo.gif` e `gif/atirando para baixo.gif` para alinhamento e timing de animação.
+
 ## Novo Asset: Atirando para Baixo & Atirando Correndo
 - Integrado `gif/atirando para baixo.gif` (36 quadros a 80ms, 640x360):
   - Ativação via `S` / `↓` + `F` / `Clique` (no chão ou em pleno ar).
