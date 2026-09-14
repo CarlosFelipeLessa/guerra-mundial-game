@@ -1,5 +1,25 @@
 # Progress Log - 2D Shooter Milestone 1
 
+## Linhas de Grade de Tela (Debug Grid) & Telemetria em Tempo Real
+- Implementado sistema de visualização e calibração espacial em tela cheia (960x540):
+  - **Eixo Horizontal (X)**: Linha central destacada em `X: 480` (`X: 0 [CENTRO]`), com divisões a cada 60px mostrando a distância para a esquerda (`-60`, `-120`, etc.) e direita (`+60`, `+120`, etc.).
+  - **Eixo Vertical (Y)**: Linhas a cada 40px mostrando a coordenada exata `Y` e a altitude correspondente acima do solo (`ALT: 440 - Y`). Solo destacado em `Y: 440 [NÍVEL DO SOLO]`.
+  - **Mira do Cursor em Tempo Real**: Linhas guias tipo crosshair e etiqueta flutuante dinâmica com `X (relativo ao centro)` e `Y (altura)`.
+  - **Marcação de Clique**: Retículo de pulso registrando onde o usuário clicou com o mouse na tela.
+  - **Telemetria de Disparo Computado**: Marcador losango vermelho no ponto exato onde o tiro é computado no bocal da arma (`muzzleX`, `muzzleY`), com vetor balístico de velocidade e painel HUD superior com coordenadas `X`, `Y`, `ALTURA` e velocidade `VX / VY`.
+  - **Botão de Alternância**: Integrado botão `DEBUG GRID: ON/OFF` na interface para ativar/desativar a qualquer instante.
+
+## Plataformas Flutuantes Cyberpunk & Tiros do Alto
+- Implementado sistema de plataformas semi-sólidas (*one-way pass-through*):
+  - 4 plataformas posicionadas estrategicamente: `PLT-01` (Y: 355, 85px), `SNIPER-TOWER` (Y: 260, 180px), `VANTAGE-03` (Y: 180, 260px) e `PLT-04` (Y: 310, 130px).
+  - Física de aterrissagem pelo topo, travessia livre por baixo e detecção de queda de borda sem travamentos.
+  - Comando de descida suave de plataformas com <kbd>S</kbd> + <kbd>ESPAÇO</kbd>.
+  - Projéteis atravessam livremente as plataformas para atingir o solo ou inimigos abaixo.
+  - Calibração de salto esportivo (`jumpForce: -560`, `gravity: 1450`) permitindo saltos em cadeia.
+  - Renderização estilizada com vidro escurecido translúcido, trilho superior neon ciano (`#00f0ff`), listras diagonais, cantos em LED âmbar e propulsores anti-gravidade luminosos.
+  - Sombra dinâmica do personagem projetada na superfície correta (plataforma ou solo).
+  - Botão de teletransporte instantâneo para a Torre Sniper no HUD (`TORRE SNIPER: SUBIR ▲`).
+
 ## Movement Synchronization Fixed
 - Identified root cause of "andando parado":
   1. Test buttons previously forced `currentState = 'walk'` with `vx = 0` via `manualLock`.

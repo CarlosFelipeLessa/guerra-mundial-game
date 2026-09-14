@@ -43,3 +43,22 @@
 - [x] Map input combination (<kbd>S</kbd> + <kbd>A/D</kbd> + <kbd>F</kbd>) and button `8 DIAG. BAIXO`
 - [x] Calculate diagonal velocity vectors (`vx = ±785 px/s`, `vy = 325 px/s`) with rotated projectile and ground/enemy collisions
 - [x] Synchronize codebases across Desktop and Documents repositories
+
+## Phase 7: Floating Platforms & High-Ground Shooting
+- [x] Implement semi-solid one-way platform physics with edge-fall detection in `src/player.js`
+- [x] Add drop-down action with <kbd>S</kbd> + <kbd>ESPAÇO</kbd>
+- [x] Render cyberpunk floating energy platforms with hover emitters and glowing rails in `src/game.js`
+- [x] Add button `TORRE SNIPER: SUBIR ▲` and command legend in `index.html`
+- [x] Enable seamless projectile pass-through for high-ground snipes
+- [x] Synchronize codebases across Desktop and Documents repositories
+
+## Phase 8: Full-Screen Debug Grid & Shot Telemetry
+- [x] Implement horizontal axis lines relative to center (X: 0 at 480px, ±distance markers every 60px)
+- [x] Implement vertical axis lines (screen Y and altitude above ground every 40px, ground at Y: 440)
+- [x] Add live cursor crosshair tracking with floating coordinate chip
+- [x] Add click location marker with expanding pulse reticle
+- [x] Add real-time shot telemetry displaying exact computed muzzle point (`muzzleX`, `muzzleY`), ballistic vector ray, and HUD tactical readout box
+- [x] Add toggle button `DEBUG GRID: ON/OFF` in interactive cabinet rack
+- [x] Synchronize codebases across Desktop and Documents repositories
+
+

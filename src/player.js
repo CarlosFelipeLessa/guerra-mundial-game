@@ -35,10 +35,12 @@ export class Player {
     this.speedWalk = 130;
     this.speedRun = 250;
     
-    // Jump Physics
-    this.jumpForce = -480;
-    this.gravity = 1400;
+    // Jump Physics & Platforms
+    this.jumpForce = -560;
+    this.gravity = 1450;
     this.isGrounded = true;
+    this.currentPlatform = null;
+    this.dropPlatformTimer = 0;
 
     // Sprite Dimensions (Base GIF 640x360)
     this.originalWidth = 640;
@@ -85,9 +87,10 @@ export class Player {
    * Update character physics, input, and state with ZERO input delay
    * @param {Object} input - { keys, isMouseDown, autoWalk, autoRun }
    * @param {number} dt - Delta time in seconds
+   * @param {Array} [platforms=[]] - Lista de plataformas flutuantes { x, y, width, height }
    * @returns {Object} Object containing spawned particles and shots
    */
-  update(input, dt) {
+  update(input, dt, platforms = []) {
     const spawnedParticles = [];
 
     // 1. Inputs em tempo real
@@ -201,21 +204,63 @@ export class Player {
     // Aplica deslocamento
     this.x += this.vx * dt;
 
-    // 4. Salto e Gravidade
-    const keyJump = input.keys['Space'] || input.keys['KeyW'] || input.keys['ArrowUp'] || input.keys['w'] || input.keys['W'];
-    if (keyJump && this.isGrounded && !isShootingDown) {
+    // 4. Salto, Gravidade e Plataformas Flutuantes Semi-Sólidas
+    const isDownPressed = input.keys['ArrowDown'] || input.keys['KeyS'] || input.keys['s'] || input.keys['S'];
+    const isJumpPressed = input.keys['Space'] || input.keys['KeyW'] || input.keys['ArrowUp'] || input.keys['w'] || input.keys['W'];
+
+    // Descer de plataforma com S + ESPAÇO
+    if (this.isGrounded && this.currentPlatform && isDownPressed && isJumpPressed) {
+      this.isGrounded = false;
+      this.currentPlatform = null;
+      this.dropPlatformTimer = 0.3; // Ignora colisão com plataforma por 300ms
+      this.y += 6;
+      this.vy = 120;
+    } else if (isJumpPressed && this.isGrounded && !isStationaryShoot) {
       this.vy = this.jumpForce;
       this.isGrounded = false;
+      this.currentPlatform = null;
+    }
+
+    // Detecção de queda de borda: se o jogador andar para fora da plataforma
+    if (this.isGrounded && this.currentPlatform) {
+      const p = this.currentPlatform;
+      const onPlat = (this.x >= p.x - 14 && this.x <= p.x + p.width + 14);
+      if (!onPlat) {
+        this.isGrounded = false;
+        this.currentPlatform = null;
+      }
+    }
+
+    if (this.dropPlatformTimer > 0) {
+      this.dropPlatformTimer -= dt;
     }
 
     if (!this.isGrounded) {
+      const prevY = this.y;
       this.vy += this.gravity * dt;
       this.y += this.vy * dt;
 
+      // Colisão de topo (One-Way Semi-Solid) com plataformas flutuantes
+      if (this.vy >= 0 && this.dropPlatformTimer <= 0 && platforms && platforms.length > 0) {
+        for (const plat of platforms) {
+          const inX = (this.x >= plat.x - 14 && this.x <= plat.x + plat.width + 14);
+          const crossedTop = (prevY <= plat.y + 4) && (this.y >= plat.y);
+          if (inX && crossedTop) {
+            this.y = plat.y;
+            this.vy = 0;
+            this.isGrounded = true;
+            this.currentPlatform = plat;
+            break;
+          }
+        }
+      }
+
+      // Colisão com o solo base
       if (this.y >= this.groundY) {
         this.y = this.groundY;
         this.vy = 0;
         this.isGrounded = true;
+        this.currentPlatform = null;
       }
     }
 
@@ -232,7 +277,7 @@ export class Player {
       if (Math.random() < (keyRun ? 0.35 : 0.18)) {
         spawnedParticles.push({
           x: this.x - this.facing * 18,
-          y: this.groundY - 2,
+          y: this.y - 2,
           vx: -this.facing * (Math.random() * 30 + 10),
           vy: -Math.random() * 18 - 4,
           size: Math.random() * 2.5 + 1.5,
@@ -283,17 +328,31 @@ export class Player {
     }
   }
 
-  renderCanvas(ctx, screenX, showDebug = false) {
+  renderCanvas(ctx, screenX, showDebug = false, platforms = []) {
     ctx.save();
 
-    const heightAboveGround = Math.max(0, this.groundY - this.y);
-    const shadowFactor = Math.max(0.3, 1 - heightAboveGround / 200);
+    // Sombra projetada no piso ou plataforma logo abaixo do personagem
+    let floorY = this.groundY;
+    if (this.currentPlatform) {
+      floorY = this.currentPlatform.y;
+    } else if (platforms && platforms.length > 0) {
+      for (const plat of platforms) {
+        if (this.x >= plat.x - 14 && this.x <= plat.x + plat.width + 14) {
+          if (plat.y >= this.y && plat.y < floorY) {
+            floorY = plat.y;
+          }
+        }
+      }
+    }
+
+    const heightAboveFloor = Math.max(0, floorY - this.y);
+    const shadowFactor = Math.max(0.3, 1 - heightAboveFloor / 200);
     const shadowWidth = this.hitboxWidth * 1.1 * shadowFactor;
     const shadowHeight = 10 * shadowFactor;
 
     ctx.fillStyle = `rgba(0, 0, 0, ${0.5 * shadowFactor})`;
     ctx.beginPath();
-    ctx.ellipse(screenX, this.groundY, shadowWidth / 2, shadowHeight / 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(screenX, floorY, shadowWidth / 2, shadowHeight / 2, 0, 0, Math.PI * 2);
     ctx.fill();
 
     if (showDebug) {

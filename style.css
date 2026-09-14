@@ -427,6 +427,8 @@ kbd {
   font-size: 0.95rem;
   color: var(--accent-cyan);
 }
+.text-orange { color: #f97316 !important; font-weight: bold; }
+.text-cyan { color: #00f0ff !important; font-weight: bold; }
 
 /* Accessibility: Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
